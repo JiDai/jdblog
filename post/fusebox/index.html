@@ -1,0 +1,247 @@
+	<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr-fr" lang="fr-fr">
+<head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="Hugo 0.20.7" />
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  
+  <title>Migrer de Webpack vers FuseBox (v1) &middot; JD</title>
+  
+
+  
+  <link rel="stylesheet" href="http://dosne.net/css/poole.css">
+  <link rel="stylesheet" href="http://dosne.net/css/syntax.css">
+  <link rel="stylesheet" href="http://dosne.net/css/hyde.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-144-precomposed.png">
+  <link rel="shortcut icon" href="/favicon.png">
+
+  
+  <link href="" rel="alternate" type="application/rss+xml" title="JD" />
+</head>
+
+	<body class=" ">
+		<div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <a href="http://dosne.net/"><h1>JD</h1></a>
+      <p class="lead">
+      An elegant open source and mobile first theme for <a href="http://hugo.spf13.com">hugo</a> made by <a href="http://twitter.com/mdo">@mdo</a>. Originally made for Jekyll.
+      </p>
+    </div>
+
+    <ul class="sidebar-nav">
+      <li><a href="/">Home</a> </li>
+      
+    </ul>
+
+    <p>&copy; 2017. All rights reserved. </p>
+  </div>
+</div>
+
+
+		<div class="content container">
+			<div class="post">
+			 	<h1>Migrer de Webpack vers FuseBox (v1)</h1>
+			  <span class="post-date">Sun, Feb 12, 2017</span>
+			      
+
+<h2 id="contexte">Contexte</h2>
+
+<p>Nous utilisons actuellement Webpack pour compiler les assets de l&rsquo;application mais le résultat n&rsquo;est pas complétement satisfaisant. Le temps de compilation initial est de 30s mais il fut d&rsquo;environ 60s avant d&rsquo;avoir fait un ensemble d&rsquo;optimisations :</p>
+
+<ul>
+<li>Utilisation de caches (babel, iconfont),</li>
+<li>Split de bundle (DLLPlugin plutôt que CommonChunkPlugin)</li>
+<li>Désactivation de source maps</li>
+</ul>
+
+<p>En utilisant le Dev Server on a un temps de recompilation relativement long de 2s en moyenne. Ce n&rsquo;est sans doute pas au niveau du temps de recompilation que la différence va se faire entre les deux outils.
+La question est donc de savoir s&rsquo;il est possible de faire mieux malgré les efforts déjà réalisés avec FuseBox. La promesse des developpeurs : simplicité et performance.</p>
+
+<h2 id="le-poc">Le poc</h2>
+
+<p>J&rsquo;ai fait un petit projet juste pour tester la compatiblité de Webpack avec le <a href="https://github.com/gaearon/react-hot-loader">React Hot Loader de gaearon</a>. Il permet de valider que HMR fonctionne bien avec les composants, styles et reducers. Il n&rsquo;y a que 3 composants mais il fait le travail. Installer FuseBox sur ce projet est vraiment rapide, en moins d&rsquo;une heure vous avec un build de dev qui fonctionne (malgré la documentation avare en explications). J&rsquo;ai repris l&rsquo;exemple de la documentation officielle et y ai ajouté quelques paramètres. Voici le fichier <code>fuse.js</code> complet :</p>
+
+<pre><code class="language-javascript">const fsbx = require(&quot;fuse-box&quot;);
+
+// Récupération de la config d'environnement via DotEnv
+const dotenv = require('dotenv')
+const env = dotenv.config().parsed // retourne un object
+
+// Création d'une instance FuseBox
+const fuseBox = new fsbx.FuseBox({
+    // Code base root path of your app
+    homeDir: &quot;src/&quot;,
+    // Fichier JS de sortie de l'application à inclure dans le HTML
+    outFile: &quot;./build/bundle.js&quot;,
+    // Configure source maps
+    sourceMap: {
+        bundleReference: &quot;sourcemaps.js.map&quot;,
+        outFile: &quot;./build/sourcemaps.js.map&quot;,
+    },
+    // Plugins pour gérer les différents types de dépendences
+    plugins: [
+    	 // Fichier SCSS pour générer un fichier de styles
+    	 // Ici, on a un groupe de plugins qui vont traiter le même type de fichier
+        [
+            fsbx.SassPlugin(),
+            fsbx.CSSResourcePlugin({ inline: true }),
+            fsbx.CSSPlugin()
+        ],
+        // Injection de variables d'environnement avec l'aide de DotEnv
+        fsbx.EnvPlugin(env),
+        // Babel pour la transpilation des fichier ES2015 et JSX
+        fsbx.BabelPlugin({
+            config: {
+                sourceMaps: true,
+                presets: [[&quot;es2015&quot;, { &quot;loose&quot;: true }], &quot;react&quot;],
+                plugins: [
+                    &quot;react-hot-loader/babel&quot;,
+                    &quot;transform-class-properties&quot;
+                ]
+            }
+        })
+    ]
+});
+
+// Lancement du dev server en indiquant le point d'entrée de notre application
+// Notez le chevron qui indique que l'on veut compiler tout sans les dépendences
+// Pus d'info : http://fuse-box.org/#bundle
+fuseBox.devServer(&quot;&gt; index.js&quot;);
+</code></pre>
+
+<p>TODO explication fusebox, plugins/loadrs, config bundle</p>
+
+<p>La différence est assez flagrante :</p>
+
+<ul>
+<li><p>Compilation en prod :</p>
+
+<ul>
+<li><strong>FuseBox</strong> : 1.8s (353Ko)</li>
+<li><strong>Webpack</strong> : 6s (309K)</li>
+</ul></li>
+
+<li><p>Re-compilation en mode dev :</p>
+
+<ul>
+<li><strong>FuseBox</strong> : 500ms (Une 2e modification sur le fichier coute 100ms)</li>
+<li><strong>Webpack</strong> : 1.2s</li>
+</ul></li>
+</ul>
+
+<p><em>Les temps sont une moyenne de plusieurs lancements.</em></p>
+
+<h2 id="cas-de-la-vraie-vie">Cas de la vraie vie</h2>
+
+<p>On a prouvé que c&rsquo;est rapide sur un petit projet très basique mais qu&rsquo;en est-il de l&rsquo;utilisation de FuseBox sur un
+véritable projet conséquant déjà mis en production.
+Je vais prendre l&rsquo;exemple de notre application pour laquelle on doit intégrer les
+fonctionnalités suivantes dans la chaîne de build. De manière simple FuseBox nous permet de gérer
+toutes ces points avec les plugins embarqués à l&rsquo;exception des fonts, favicons, le fichier index.html et Eslint.</p>
+
+<p>Voici en détail les différents de la génération du bundle</p>
+
+<h5 id="react-redux-avec-hmr">React/Redux avec HMR</h5>
+
+<p>Faisable avec un plugin embarqué.
+Fonctionne mais je perd l&rsquo;état du Redux store reload</p>
+
+<h5 id="transpilation-es6-jsx-avec-babel">Transpilation ES6/JSX avec Babel</h5>
+
+<p>Faisable avec un plugin embarqué.
+La gestion du <code>.babelrc</code> est disponible mais est en cours d&rsquo;amélioration. Je n&rsquo;ai pas encore eu de probléme de coté là.</p>
+
+<h5 id="compiler-2-fichiers-js-en-sortie-vendors-et-app">Compiler 2 fichiers JS en sortie (vendors et app)</h5>
+
+<p>L&rsquo;idée ici est de faire un bundle pour les vendors et un autre pour l&rsquo;application.
+Les vendors ne changeant pas souvent, seront regulierement servis à partir du cache (à condition de bien gérer les headers)
+Il est théoriquement possible de le faire avec Fusebox mais je n&rsquo;ai pas encore essayé.</p>
+
+<p>TODO</p>
+
+<h5 id="sass">SASS</h5>
+
+<p>Faisable avec un plugin embarqué
+Fonctionne, attention à bien spécifier `includePaths&rsquo; pour les ressources appelées depuis le SASS</p>
+
+<p>Exemple :</p>
+
+<pre><code>fsbx.SassPlugin({
+    includePaths: [
+        path.resolve('./src/sass'),
+        path.resolve('./src/images')
+    ]
+}),
+</code></pre>
+
+<h5 id="eslint">Eslint</h5>
+
+<p>Utilisation d&rsquo;un plugin tiers, attention à bien chainer le plugin Eslint avec Babel pouréviter un problème de parsing.</p>
+
+<pre><code>const fsbx = require(&quot;fuse-box&quot;);
+const eslinter = require(&quot;fuse-box-eslint-plugin&quot;);
+const fuseBox = new fsbx.FuseBox({
+    // ...
+    plugins: [
+        [
+            eslinter({
+                pattern: /js(x)*$/,
+            }),
+            fsbx.BabelPlugin(),
+        ]
+    ]
+});
+</code></pre>
+
+<h5 id="dotenv-configuration">DotEnv configuration</h5>
+
+<p>Faisable avec un plugin embarqué
+Ne fonctionne pas, des bug dont ouverts</p>
+
+<h5 id="import-d-images">Import d&rsquo;images</h5>
+
+<p>Faisable avec un plugin qui ebarque les images en Base64, ce qui peut alourdir considérablement le poids du bundle.
+L&rsquo;import des images (et autres assets) fait depuis les fichiers JS doivent pointer vers un emplacement à l&rsquo;intérieur du <code>homeDir</code> de fuse.</p>
+
+<h5 id="webfont-roboto">Webfont (Roboto)</h5>
+
+<p>Rien de particulier ici, il suffit d&rsquo;utiliser la méthode <code>@import</code> dans le sass pour importer notre police Roboto.</p>
+
+<h5 id="géneration-d-une-iconfont-depuis-des-svg">Géneration d&rsquo;une iconfont depuis des SVG</h5>
+
+<p>Pour optimiser le poids des ressources et pouvoir personnaliser au maximum nos icones, nous avons fait le choix de générer notre propre police d&rsquo;icones. Cela se fait à partir d&rsquo;un ensemble de fichier SVG et grâce à un plugin de Webpack.</p>
+
+<p>Pour FuseBox il n&rsquo;existe pas d&rsquo;alternative à cette solution.
+Donc il faut regénérer la police manuellement (<a href="http://fontello.com">Fontello</a>, <a href="https://icomoon.io">Icomoon</a>)
+et l&rsquo;inclure avec un import.</p>
+
+<h5 id="géneration-du-fichier-index-html-racine">Géneration du fichier index.html racine</h5>
+
+<p>Webpack permet, via un plugin de générer un fichier HTML à partir d&rsquo;un template au format <code>.ejs</code> et de l&rsquo;ajouter au bundle
+Ce fichier racine servira de conteneur à l&rsquo;app JS pour le navigateur. Pratique pour injecter des données dynamiques (comme injecter les ressources types images, favicon et autres).
+Coté FuseBox, le fichier doit etre géré manuellement. Je l&rsquo;ajoute donc dans le dossier public.</p>
+
+<h5 id="favicon">Favicon</h5>
+
+<p>Nous utilisions un plugin pour générer un ensemble de favicons pour tous les devices à partir d&rsquo;un seul fichier SVG.
+Le plugin s&rsquo;occupait de la générations des images/ico puis ajoutait à notre fichier HTML (<code>.ejs</code>) les balises et manifestes nécessaires pour dans le <code>&lt;head&gt;</code>. Impossible encore avec FuseBox.</p>
+
+<h2 id="des-débuts-prometteurs">Des débuts prometteurs</h2>
+
+<p>L&rsquo;équipe de FuseBox se concentre vraiment sur les performances et ça se voit, elles sont au rendez-vous, avec la simplicité de la configuration en prime. Cepandant, étant donné sa jeunnesse, certaines choses m&rsquo;ont manqué (gestion des images, génération de l&rsquo;index, documentation et exemples pas assez fournis) mais j&rsquo;ai pu contourner le manque en faisant différement. Concernant le poids du bundle généré c&rsquo;est Webpack qui s&rsquo;en sort mieux : 353Ko pour FuseBox et 325Ko pour Webpack.</p>
+
+			</div>
+
+			
+		</div>
+
+  </body>
+</html>
