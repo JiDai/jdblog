@@ -2,21 +2,21 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>JD</title>
-    <link>http://dosne.net/</link>
+    <link>/</link>
     <description>Recent content on JD</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>fr-fr</language>
     <lastBuildDate>Sun, 12 Feb 2017 22:05:09 +0100</lastBuildDate>
     
-	<atom:link href="http://dosne.net/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>Migrer de Webpack vers FuseBox (v1)</title>
-      <link>http://dosne.net/post/fusebox/</link>
+      <link>/post/fusebox/</link>
       <pubDate>Sun, 12 Feb 2017 22:05:09 +0100</pubDate>
       
-      <guid>http://dosne.net/post/fusebox/</guid>
+      <guid>/post/fusebox/</guid>
       <description>Contexte Nous utilisons actuellement Webpack pour compiler les assets de l&amp;rsquo;application mais le résultat n&amp;rsquo;est pas complétement satisfaisant. Le temps de compilation initial est de 30s mais il fut d&amp;rsquo;environ 60s avant d&amp;rsquo;avoir fait un ensemble d&amp;rsquo;optimisations :
  Utilisation de caches (babel, iconfont), Split de bundle (DLLPlugin plutôt que CommonChunkPlugin) Désactivation de source maps  En utilisant le Dev Server on a un temps de recompilation relativement long de 2s en moyenne.</description>
     </item>
