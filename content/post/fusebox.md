@@ -130,7 +130,7 @@ fuse.bundle("vendor")
 fuse.bundle("app")
     .watch()
     // Ce bundle ne contient donc pas le code du HMR (contrairement au premier)
-    // mais on meut lactiver sur ce bundle
+    // mais on peut l'activer sur ce bundle
     .hmr()
     // Active les sourcemaps du package
     .sourceMaps(true)
