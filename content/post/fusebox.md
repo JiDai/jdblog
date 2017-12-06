@@ -58,6 +58,10 @@ const fuseBox = new fsbx.FuseBox({
                     "transform-class-properties"
                 ]
             }
+        }),
+        fsbx.UglifyJSPlugin(),
+        fsbx.WebIndexPlugin({
+            target : '../index.html'
         })
     ]
 });
@@ -70,15 +74,16 @@ fuseBox.devServer("> index.js");
 
 TODO explication fusebox, plugins/loadrs, config bundle
 
-La différence est assez flagrante : 
+La différence est assez mineure : 
 
 - Compilation en prod :
-  - **FuseBox** : 1.8s (353Ko)
-  - **Webpack** : 6s (309K)
+  - **FuseBox** : 6-7s (383Ko)
+  - **Webpack** : 6-7s (309K)
 
 - Re-compilation en mode dev :
-  - **FuseBox** : 500ms (Une 2e modification sur le fichier coute 100ms)
-  - **Webpack** : 1.2s
+  - **FuseBox** : 500ms 
+  - **Webpack** : 2s
+    Dans les 2 cas, une 2e modification sur le fichier coute ~150ms
 
 _Les temps sont une moyenne de plusieurs lancements._
 
@@ -95,7 +100,7 @@ Voici en détail les différents de la génération du bundle
 ##### React/Redux avec HMR
 
 Faisable avec un plugin embarqué.
-Fonctionne mais je perd l'état du Redux store reload
+Fonctionne mais je perd l'état du Redux store reload.
 
 ##### Transpilation ES6/JSX avec Babel
 
@@ -145,15 +150,29 @@ const fuseBox = new fsbx.FuseBox({
 });
 ```
 
+Ne fonctionne pas avec la derniere version de Fusebox. Le plugin est référence sur le site mais le dépôt source est très peu actif.
+
 ##### DotEnv configuration
 
-Faisable avec un plugin embarqué
-Ne fonctionne pas, des bug dont ouverts
+Faisable avec un plugin embarqué. Il suffit de require le package qui va parser le contenu du fichier, puis passer le résultat à la config FuseBox via le plugin: 
+
+```js
+const dotenv = require('dotenv')
+const env = dotenv.config().parsed
+
+{
+    //...
+    plugins : [
+        fsbx.EnvPlugin(env),
+    ]
+    //...
+}    
+```
  
 ##### Import d'images
 
 Faisable avec un plugin qui ebarque les images en Base64, ce qui peut alourdir considérablement le poids du bundle.
-L'import des images (et autres assets) fait depuis les fichiers JS doivent pointer vers un emplacement à l'intérieur du `homeDir` de fuse. 
+L'import des images (et autres assets) fait depuis les fichiers JS doivent pointer vers un emplacement à l'intérieur du `homeDir` de fuse.
 
 ##### Webfont (Roboto)
 
@@ -172,7 +191,7 @@ et l'inclure avec un import.
 
 Webpack permet, via un plugin de générer un fichier HTML à partir d'un template au format `.ejs` et de l'ajouter au bundle
 Ce fichier racine servira de conteneur à l'app JS pour le navigateur. Pratique pour injecter des données dynamiques (comme injecter les ressources types images, favicon et autres).
-Coté FuseBox, le fichier doit etre géré manuellement. Je l'ajoute donc dans le dossier public.
+Coté FuseBox, un [plugin](http://fuse-box.org/plugins/web-index-plugin) (moins configurable)  existe pour faire ça.
 
 ##### Favicon
 
@@ -180,6 +199,17 @@ Nous utilisions un plugin pour générer un ensemble de favicons pour tous les d
 Le plugin s'occupait de la générations des images/ico puis ajoutait à notre fichier HTML (`.ejs`) les balises et manifestes nécessaires pour dans le `<head>`. Impossible encore avec FuseBox.
 
 
-## Des débuts prometteurs
+## Promesse tenue
 
-L'équipe de FuseBox se concentre vraiment sur les performances et ça se voit, elles sont au rendez-vous, avec la simplicité de la configuration en prime. Cepandant, étant donné sa jeunnesse, certaines choses m'ont manqué (gestion des images, génération de l'index, documentation et exemples pas assez fournis) mais j'ai pu contourner le manque en faisant différement. Concernant le poids du bundle généré c'est Webpack qui s'en sort mieux : 353Ko pour FuseBox et 325Ko pour Webpack.
+L'équipe de FuseBox se concentre vraiment sur les performances et ça se voit, elles sont au rendez-vous, avec la simplicité de la configuration en prime. Cepandant, étant donné sa relative jeunesse, certaines choses m'ont manqué (gestion des images) mais j'ai pu les contourner en faisant différement. 
+Concernant le poids du bundle généré c'est Webpack qui s'en sort mieux : 383Ko pour FuseBox et 325Ko pour Webpack.
+
+Avantages 
+- Léger gain performance en dev
+- Simplicité de configuration
+
+Inconvénients : 
+- Typescript en peer dep même si je ne m'en sers pas
+- HMR non fonctionnel avec le store Redux
+- Uglification assez longue (plus rapide avec Webpack) 
+- Fichiers généré plus lourd
