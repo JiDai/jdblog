@@ -1,8 +1,8 @@
-+++
-date = "2017-02-12T22:05:09+01:00"
-title = "FuseBox (v2) en tant qu'alternative à Webpack (v3)"
-draft = true
-+++
+---
+title: "FuseBox (v2) en tant qu'alternative à Webpack (v3)"
+date: 2017-12-09T20:29:50+01:00
+draft: true
+---
 
 ## Contexte
 
